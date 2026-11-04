@@ -2,6 +2,7 @@ import asyncio
 import time
 
 import openai
+from pydantic import BaseModel
 
 from app.core.config import Settings
 from app.core.exceptions import AiRequestError
@@ -98,6 +99,31 @@ class OpenAiLlmClient:
         # OpenAI 서버의 응답 문장을 반환한다
         return response.output_text
 
+    async def ask_structured_async[T: BaseModel](
+        self, instructions: str, question: str, output_type: type[T]
+    ) -> T:
+        start = time.perf_counter()
+        try:
+            response = await self._async_client.responses.parse(
+                model=self.settings.openai_model,
+                instructions=instructions,
+                input=question,
+                text_format=output_type,
+                max_output_tokens=self.settings.openai_max_output_tokens,
+                reasoning={"effort": self.settings.openai_reasoning_effort},
+                store=False,
+            )
+        except openai.OpenAIError as e:
+            raise to_ai_request_error(e) from e
+
+        print_usage("ask_structured_async", response, start)
+
+        if response.output_parsed is None:
+            raise AiRequestError(
+                f"구조화된 응답을 받지 못했습니다. (status={response.status})"
+            )
+        return response.output_parsed
+
     async def close(self) -> None:
         self._client.close()
         await self._async_client.close()
@@ -160,6 +186,15 @@ class FakeLlmClient:
     async def ask_async(self, instructions: str, question: str) -> str:
         await asyncio.sleep(self.delay_seconds)
         return f"(가짜 응답) '{question}'에 대한 응답입니다. {self.delay_seconds}초 기다렸습니다."
+
+    async def ask_structured_async[T: BaseModel](
+        self, instructions: str, question: str, output_type: type[T]
+    ) -> T:
+        await asyncio.sleep(self.delay_seconds)
+
+        return output_type.model_validate(
+            {"feedback": "(가짜 응답) 피드백입니다.", "score": 80}
+        )
 
     async def close(self) -> None:
         pass
