@@ -8,7 +8,7 @@ class AnswerCreateRequest(CamelModel):
     user_name: str = Field(min_length=1, max_length=10)
     question: str = Field(min_length=1)
     answer: str = Field(min_length=1, max_length=300)
-    confidence: int = Field(ge=1, le=10)
+    confidence: int = Field(ge=1, le=5)
 
 
 class AnswerResponse(CamelModel):
