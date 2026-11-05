@@ -3,17 +3,12 @@ import time
 
 from fastapi import APIRouter
 
+from app.core.thread_log import log
 from app.dependencies import AnswerServiceDep, FeedbackServiceDep
 from app.schemas.answer import AnswerCreateRequest, AnswerResponse
 from app.schemas.feedback import AiFeedbackResponse
 
 router = APIRouter(prefix="/api/answers", tags=["답변"])
-
-
-def log(handler: str, message: str) -> None:
-    now = time.strftime("%H:%M:%S")
-    thread = threading.current_thread().name
-    print(f"{now} [{handler}] {message} (스레드: {thread})")
 
 
 @router.get("", summary="전체 답변 목록 조회")
