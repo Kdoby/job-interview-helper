@@ -6,6 +6,7 @@ from app.clients.llm_client import LlmClient
 from app.repositories.answer_repository import AnswerRepository
 from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService
+from app.services.question_service import QuestionService
 
 # 서버가 실행될 때 한 번만 만들어짐(싱글턴)
 answer_repository = AnswerRepository()
@@ -45,3 +46,12 @@ def get_feedback_service(
 
 
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]
+
+
+def get_question_service(
+    llm_client: LlmClientDep,
+) -> QuestionService:
+    return QuestionService(llm_client)
+
+
+QuestionServiceDep = Annotated[QuestionService, Depends(get_question_service)]
