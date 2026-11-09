@@ -5,8 +5,7 @@ from fastapi import APIRouter
 
 from app.core.thread_log import log
 from app.dependencies import AnswerServiceDep, FeedbackServiceDep
-from app.schemas.answer import AnswerCreateRequest, AnswerResponse
-from app.schemas.feedback import AiFeedbackResponse
+from app.schemas.answer import AnswerCreateRequest, AnswerResponse, AiFeedbackResponse
 
 router = APIRouter(prefix="/api/answers", tags=["답변"])
 

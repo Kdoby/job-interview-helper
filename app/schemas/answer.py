@@ -27,3 +27,8 @@ class AnswerResponse(CamelModel):
             answer=answer.answer,
             confidence=answer.confidence,
         )
+
+
+class AiFeedbackResponse(CamelModel):
+    feedback: str
+    score: int = Field(ge=0, le=100)
