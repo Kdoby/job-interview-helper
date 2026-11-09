@@ -17,6 +17,8 @@ class AnswerResponse(CamelModel):
     question: str
     answer: str
     confidence: int
+    feedback: str | None = None
+    score: int | None = None
 
     @classmethod
     def from_answer(cls, answer: Answer) -> AnswerResponse:
@@ -26,6 +28,8 @@ class AnswerResponse(CamelModel):
             question=answer.question,
             answer=answer.answer,
             confidence=answer.confidence,
+            feedback=answer.feedback,
+            score=answer.score,
         )
 
 
