@@ -1,11 +1,8 @@
-import threading
-import time
-
 from fastapi import APIRouter
 
 from app.core.thread_log import log
 from app.dependencies import AnswerServiceDep, FeedbackServiceDep
-from app.schemas.answer import AnswerCreateRequest, AnswerResponse, AiFeedbackResponse
+from app.schemas.answer import AiFeedbackResponse, AnswerCreateRequest, AnswerResponse
 
 router = APIRouter(prefix="/api/answers", tags=["답변"])
 
