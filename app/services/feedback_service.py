@@ -2,11 +2,11 @@ from app.clients.llm_client import LlmClient
 from app.core.exceptions import AnswerNotFoundError
 from app.domain.answer import Answer
 from app.repositories.answer_repository import AnswerRepository
-from app.schemas.feedback import AiFeedbackResponse
+from app.schemas.answer import AiFeedbackResponse
 
 
 INSTRUCTIONS = (
-    "너는 IT 회사의 20년차 개발자이고, 현재 면접관으로 참석했다. 사용자의 질문에 대한 답을 보고 적절한 피드백을 준다."
+    "너는 IT 회사의 20년차 개발자이고, 현재 백엔드 직무 면접관으로 참석했다. 사용자의 질문에 대한 답을 보고 적절한 피드백을 준다."
     "score는 0~100점 사이로 주고, 피드백은 1000자 이하의 줄글로 준다."
 )
 
