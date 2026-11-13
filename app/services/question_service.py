@@ -1,7 +1,9 @@
 import random
 
-from app.clients.llm_client import LlmClient
+from app.ai.callbacks import TokenUsageTracker
+from app.ai.errors import invoke_or_raise
 from app.schemas.question import AiQuestionResponse
+from langchain_core.runnables import Runnable
 
 TOPICS = [
     # Spring
@@ -75,22 +77,19 @@ TOPICS = [
     "SOLID 원칙",
 ]
 
-INSTRUCTIONS = (
-    "너는 IT 회사의 20년차 개발자이고 면접관으로 기술 면접에 참석할 예정이다. 면접 대상자들은 백엔드 개발 직군에 지원했다."
-    "백엔드 기술에 관련한 면접 질문을 선정한다. Spring, FastAPI, MySQL에 관련한 지식이 주가 되어야 하며, 이외의 질문들도 "
-    "예상치 못한 질문으로 괜찮다. 부연 설명 없이 질문 문장 하나만 출력한다."
-)
-
 
 class QuestionService:
-    def __init__(self, llm_client: LlmClient):
-        self.llm_client = llm_client
+    def __init__(self, question_chain: Runnable):
+        self.question_chain = question_chain
 
     def generate_question(self) -> AiQuestionResponse:
 
         topic = random.choice(TOPICS)
-        prompt = f"'{topic}' 주제로 면접 질문을 1개 생성해줘."
 
-        result = self.llm_client.ask(INSTRUCTIONS, prompt)
+        tracker = TokenUsageTracker()
+        result = invoke_or_raise(
+            self.question_chain, {"topic": topic}, config={"callbacks": [tracker]}
+        )
+        tracker.print_usage("question")
 
         return AiQuestionResponse(question=result)

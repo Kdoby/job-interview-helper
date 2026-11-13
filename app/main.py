@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import anyio
 from fastapi import FastAPI
 
-from app.clients.llm_client import FakeLlmClient, OpenAiLlmClient
+from app.ai.components import build_ai_components, build_fake_ai_components
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handler
 from app.routers import answer_router, question_router
@@ -20,13 +20,13 @@ async def lifespan(app: FastAPI):
             f"[lifespan] 가짜 LLM 클라이언트를 사용한다 (FAKE_LLM={settings.fake_llm}, "
             f"키 있음={settings.openai_api_key is not None}, 응답까지 {settings.fake_llm_delay_seconds}초)"
         )
-        app.state.llm_client = FakeLlmClient(settings)
+        app.state.ai = build_fake_ai_components(settings)
     # 1-2. 키가 있으면 실제 OpenAI 클라이언트를 만든다.
     else:
         print(
             f"[lifespan] OpenAI 클라이언트를 사용한다 (model={settings.openai_model})"
         )
-        app.state.llm_client = OpenAiLlmClient(settings)
+        app.state.ai = build_ai_components(settings)
 
     # 2. 실험용 : 설정에 THREAD_POOL_SIZE가 있으면 def 핸들러를 실행하는 스레드 풀의 크기를 바꾼다.
     if settings.thread_pool_size is not None:
@@ -39,7 +39,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # 4. 서버 종료 : OpenAI 서버와의 연결을 닫는다. close()가 async def라서 await가 필요하다.
-    await app.state.llm_client.close()
+    # await app.state.llm_client.close()
+    # [리팩토링]: ChatOpenAI에는 직접 닫을 close()가 없음
 
 
 # 1. 앱 객체 생성
