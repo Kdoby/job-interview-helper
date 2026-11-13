@@ -38,8 +38,6 @@ async def lifespan(app: FastAPI):
     # 3. yield : 서버는 이 지점에서 멈춰 있는 동안 요청을 받는다.
     yield
 
-    # 4. 서버 종료 : OpenAI 서버와의 연결을 닫는다. close()가 async def라서 await가 필요하다.
-    # await app.state.llm_client.close()
     # [리팩토링]: ChatOpenAI에는 직접 닫을 close()가 없음
 
 

@@ -8,12 +8,6 @@ from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService
 from app.services.question_service import QuestionService
 
-# def get_llm_client(request: Request) -> LlmClient:
-#     return request.app.state.llm_client
-
-
-# LlmClientDep = Annotated[LlmClient, Depends(get_llm_client)]
-
 
 def get_ai(request: Request) -> AiComponents:
     return request.app.state.ai
