@@ -34,5 +34,5 @@ class TokenUsageTracker(BaseCallbackHandler):
         elapsed_ms = int((time.perf_counter() - self.start) * 1000)
 
         print(
-            f"[{label}] model={self.model}, 입력 토큰={self.input_tokens}, 출력 토큰={self.output_tokens}, {elapsed_ms}ms"
+            f"[{label}] model={self.model}, 입력 토큰={self.input_tokens}, 출력 토큰={self.output_tokens}, {elapsed_ms}ms, calls={self.calls}"
         )

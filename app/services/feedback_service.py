@@ -14,9 +14,9 @@ from app.schemas.answer import AiFeedbackResponse
 
 
 class FeedbackService:
-    def __init__(self, repository: AnswerRepository, feedback_chain: Runnable):
+    def __init__(self, repository: AnswerRepository, feedback_graph: Runnable):
         self.repository = repository
-        self.feedback_chain = feedback_chain
+        self.feedback_graph = feedback_graph
 
     # 1. 답변 조회
     def find_answer(self, answer_id: int) -> Answer:
@@ -49,14 +49,16 @@ class FeedbackService:
         chain_input = self.build_chain_input(answer)
 
         tracker = TokenUsageTracker()
+        # 그래프는 상태 dict를 반환함
         result = await ainvoke_or_raise(
-            self.feedback_chain, chain_input, config={"callbacks": [tracker]}
+            self.feedback_graph, chain_input, config={"callbacks": [tracker]}
         )
         tracker.print_usage("feedback")
 
+        draft = result["draft"]
         # 답변에 피드백, 점수 저장
-        answer.feedback = result.feedback
-        answer.score = result.score
+        answer.feedback = draft.feedback
+        answer.score = draft.score
         self.repository.save(answer)
 
-        return result
+        return draft

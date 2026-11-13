@@ -45,7 +45,7 @@ def get_feedback_service(
     repository: AnswerRepositoryDep,
     ai: AiDep,
 ) -> FeedbackService:
-    return FeedbackService(repository, ai.feedback_chain)
+    return FeedbackService(repository, ai.feedback_graph)
 
 
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]

@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     # 1로 줄이면 def 핸들러가 한 번에 하나씩만 실행되는 것을 눈으로 확인할 수 있다(routers/ai_router.py의 실험 2).
     thread_pool_size: int | None = Field(default=None, ge=1)
 
+    feedback_max_reviews: int = Field(default=2, ge=1)
+
 
 @lru_cache
 def get_settings() -> Settings:
