@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     thread_pool_size: int | None = Field(default=None, ge=1)
 
     feedback_max_reviews: int = Field(default=2, ge=1)
+    question_max_regenerations: int = Field(default=2, ge=1)
 
 
 @lru_cache

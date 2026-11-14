@@ -8,13 +8,16 @@ from app.core.config import Settings
 from app.schemas.answer import AiFeedbackResponse
 
 
-# 가짜 질문 생성 체인
-def build_fake_question_chain(settings: Settings):
-    def fake_question(input: dict) -> str:
+# 가짜 질문-검증 그래프
+def build_fake_question_check_graph(settings: Settings):
+    def fake_question_check(input: dict) -> dict:
         time.sleep(settings.fake_llm_delay_seconds)
-        return f"(가짜 응답) '{input['topic']}' 주제 질문입니다."
+        return {
+            "question": "(가짜 응답) 가짜 질문과 검증입니다.",
+            "attempts": 1,
+        }
 
-    return RunnableLambda(fake_question)
+    return RunnableLambda(fake_question_check)
 
 
 # 가짜 피드백-리뷰 그래프

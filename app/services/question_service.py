@@ -79,17 +79,18 @@ TOPICS = [
 
 
 class QuestionService:
-    def __init__(self, question_chain: Runnable):
-        self.question_chain = question_chain
+    def __init__(self, question_graph: Runnable):
+        self.question_graph = question_graph
 
     def generate_question(self) -> AiQuestionResponse:
 
         topic = random.choice(TOPICS)
 
         tracker = TokenUsageTracker()
+        # 그래프는 State dict를 반환함
         result = invoke_or_raise(
-            self.question_chain, {"topic": topic}, config={"callbacks": [tracker]}
+            self.question_graph, {"topic": topic}, config={"callbacks": [tracker]}
         )
         tracker.print_usage("question")
 
-        return AiQuestionResponse(question=result)
+        return AiQuestionResponse(question=result["question"])

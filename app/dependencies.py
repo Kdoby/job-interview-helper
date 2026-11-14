@@ -54,7 +54,7 @@ FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]
 def get_question_service(
     ai: AiDep,
 ) -> QuestionService:
-    return QuestionService(ai.question_chain)
+    return QuestionService(ai.question_graph)
 
 
 QuestionServiceDep = Annotated[QuestionService, Depends(get_question_service)]
