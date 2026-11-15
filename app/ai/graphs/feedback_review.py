@@ -3,10 +3,9 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from app.ai.chains.feedback_chain import build_feedback_chain
-from app.ai.outputs.feedback import FeedbackReview
+from app.ai.outputs.feedback import FeedbackResult, FeedbackReview
 from app.ai.prompts.feedback import REVIEW_PROMPT, REVISION_NOTE
 from app.core.thread_log import log
-from app.schemas.answer import AiFeedbackResponse
 
 
 # 상태 정의
@@ -15,10 +14,10 @@ class FeedbackState(TypedDict):
     answer: str
     confidence: int
     confidence_guide: str
-    draft: AiFeedbackResponse
+    draft: FeedbackResult
     attempts: int
     passed: bool
-    review_reason: str
+    reason: str
 
 
 # 그래프 조립
@@ -29,18 +28,16 @@ def build_feedback_review_graph(llm, max_reviews: int):
     review_chain = REVIEW_PROMPT | llm.with_structured_output(FeedbackReview)
     print("[lifespan] review_chain 생성")
 
-    # 피드백 초안 작성 노드
-    async def draft_feedback(state: FeedbackState):
+    # 피드백 생성 노드
+    async def generate(state: FeedbackState):
 
         # 시도 횟수 증가
         attempts = state.get("attempts", 0) + 1
-        log("draft_feedback", f"attempts={attempts}")
+        log("feedback.generate", f"attempts={attempts}")
 
-        # 재작성이면 review_reason을 프롬프트에 넣음
-        review_reason = state.get("review_reason", "")
-        revision_note = (
-            REVISION_NOTE.format(reason=review_reason) if review_reason else ""
-        )
+        # 재작성이면 reason을 프롬프트에 넣음
+        reason = state.get("reason", "")
+        revision_note = REVISION_NOTE.format(reason=reason) if reason else ""
 
         draft = await draft_chain.ainvoke(
             {
@@ -53,18 +50,28 @@ def build_feedback_review_graph(llm, max_reviews: int):
         )
         return {"draft": draft, "attempts": attempts}
 
-    # 리뷰-피드백 노드
-    async def review_feedback(state: FeedbackState):
+    # 리뷰 노드
+    async def review(state: FeedbackState):
         draft = state["draft"]
 
         # 1. 코드 검사
-        if state["confidence"] >= 4 and "꼬리 질문:" not in draft.feedback:
-            reason = "자신감이 높은 지원자인데 '꼬리 질문:'으로 시작하는 꼬리 질문이 없다. 피드백 마지막에 추가한다."
-            log("review_feedback", f"코드 검사 실패: {reason}")
-            return {"passed": False, "review_reason": reason}
+        if state["confidence"] >= 4 and len(draft.follow_up_questions) <= 0:
+            reason = "자신감이 높은 지원자인데 꼬리 질문이 없다. follow_up_questions에 추가한다"
+            log("feedback.review", f"코드 검사 실패: {reason}")
+            return {"passed": False, "reason": reason}
+
+        # 기대 레벨
+        expected = (
+            "우수" if draft.score >= 90 else "보통" if draft.score >= 70 else "부족"
+        )
+
+        if draft.level != expected:
+            reason = "점수와 통과 레벨이 모순된다. 점수 루브릭과 점수 구간을 반영하여 다시 점수 구간을 산정한다."
+            log("feedback.review", f"코드 검사 실패: {reason}")
+            return {"passed": False, "reason": reason}
 
         # 2. LLM 검토
-        review = await review_chain.ainvoke(
+        result = await review_chain.ainvoke(
             {
                 "question": state["question"],
                 "answer": state["answer"],
@@ -75,8 +82,8 @@ def build_feedback_review_graph(llm, max_reviews: int):
         )
 
         # LLM 판정 결과
-        log("review_feedback", f"passed={review.passed}, reason={review.reason}")
-        return {"passed": review.passed, "review_reason": review.reason}
+        log("feedback.review", f"passed={result.passed}, reason={result.reason}")
+        return {"passed": result.passed, "reason": result.reason}
 
     # 리뷰 라우터
     def route_after_review(state: FeedbackState):
@@ -84,20 +91,18 @@ def build_feedback_review_graph(llm, max_reviews: int):
             return END
 
         # 피드백 작성 노드로 돌아감
-        return "draft_feedback"
+        return "generate"
 
     # 그래프 조립
     builder = StateGraph(FeedbackState)
 
     # 노드 등록
-    builder.add_node("draft_feedback", draft_feedback)
-    builder.add_node("review_feedback", review_feedback)
+    builder.add_node("generate", generate)
+    builder.add_node("review", review)
 
     # 엣지 등록
-    builder.add_edge(START, "draft_feedback")
-    builder.add_edge("draft_feedback", "review_feedback")
-    builder.add_conditional_edges(
-        "review_feedback", route_after_review, ["draft_feedback", END]
-    )
+    builder.add_edge(START, "generate")
+    builder.add_edge("generate", "review")
+    builder.add_conditional_edges("review", route_after_review, ["generate", END])
 
     return builder.compile()

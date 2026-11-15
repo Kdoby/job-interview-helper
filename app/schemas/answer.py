@@ -36,3 +36,6 @@ class AnswerResponse(CamelModel):
 class AiFeedbackResponse(CamelModel):
     feedback: str
     score: int = Field(ge=0, le=100)
+    strengths: list[str]
+    missing_concepts: list[str]
+    follow_up_questions: list[str]

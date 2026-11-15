@@ -2,6 +2,7 @@ from langchain_core.runnables import Runnable
 
 from app.ai.callbacks import TokenUsageTracker
 from app.ai.errors import ainvoke_or_raise
+from app.ai.outputs.feedback import FeedbackResult
 from app.ai.prompts.feedback import (
     HIGH_CONFIDENCE_GUIDE,
     LOW_CONFIDENCE_GUIDE,
@@ -44,7 +45,7 @@ class FeedbackService:
         }
 
     # LLM 호출
-    async def create_feedback(self, answer_id: int) -> AiFeedbackResponse:
+    async def generate_feedback(self, answer_id: int) -> AiFeedbackResponse:
         answer = self.find_answer(answer_id)
         chain_input = self.build_chain_input(answer)
 
@@ -55,10 +56,12 @@ class FeedbackService:
         )
         tracker.print_usage("feedback")
 
-        draft = result["draft"]
+        # FeedbackResult
+        draft: FeedbackResult = result["draft"]
         # 답변에 피드백, 점수 저장
         answer.feedback = draft.feedback
         answer.score = draft.score
         self.repository.save(answer)
 
-        return draft
+        # level 필드는 제외하고 타입 변환
+        return AiFeedbackResponse.model_validate(draft.model_dump(exclude={"level"}))

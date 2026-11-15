@@ -26,12 +26,12 @@ def register_answer(
 
 # ai - 피드백 받기, 비동기
 @router.post("/{answer_id}/feedback", summary="답변에 대한 피드백 받기")
-async def get_feedback(
+async def generate_feedback(
     answer_id: int, service: FeedbackServiceDep
 ) -> AiFeedbackResponse:
 
     log("async", "요청 받음")
-    response = await service.create_feedback(answer_id)
+    response = await service.generate_feedback(answer_id)
     log("async", "요청 보냄")
 
     return response

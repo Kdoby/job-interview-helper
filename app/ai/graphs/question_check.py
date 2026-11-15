@@ -13,8 +13,8 @@ from app.core.thread_log import log
 class QuestionState(TypedDict):
     topic: str
     question: str
-    check_reason: str
     attempts: int
+    reason: str
     passed: bool
 
 
@@ -31,13 +31,11 @@ def build_question_check_graph(llm: ChatOpenAI, max_regenerations):
 
         # 시도 횟수 증가
         attempts = state.get("attempts", 0) + 1
-        log("question_check", f"attempts={attempts}")
+        log("question.generate", f"attempts={attempts}")
 
         # 재생성이면 근거 삽입, 아니면 빈 문자열
-        check_reason = state.get("check_reason", "")
-        revision_note = (
-            REVISION_NOTE.format(reason=check_reason) if check_reason else ""
-        )
+        reason = state.get("reason", "")
+        revision_note = REVISION_NOTE.format(reason=reason) if reason else ""
 
         result = question_chain.invoke(
             {"topic": state["topic"], "revision_note": revision_note}
@@ -55,18 +53,18 @@ def build_question_check_graph(llm: ChatOpenAI, max_regenerations):
         # 1. 코드 검사
         if multi_line or multi_sentence:
             reason = "한 문장으로 끝나는 질문만 해야한다."
-            log("question_check", f"코드 검사 실패: {reason}")
-            return {"passed": False, "check_reason": reason}
+            log("question.validate", f"코드 검사 실패: {reason}")
+            return {"passed": False, "reason": reason}
         # 2. LLM 검사 (의미 기반)
         result = question_check_chain.invoke(
             {"topic": state["topic"], "question": state["question"]}
         )
 
         log(
-            "question_check",
-            f"passed={result.on_topic}, check_reason={result.reason}",
+            "question.validate",
+            f"passed={result.on_topic}, reason={result.reason}",
         )
-        return {"passed": result.on_topic, "check_reason": result.reason}
+        return {"passed": result.on_topic, "reason": result.reason}
 
     def route_after_validate(state: QuestionState) -> str:
         if state["passed"] or state["attempts"] >= max_regenerations:
