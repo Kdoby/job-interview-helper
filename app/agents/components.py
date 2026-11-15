@@ -2,13 +2,13 @@ from dataclasses import dataclass
 
 from langchain_core.runnables import Runnable
 
-from app.ai.fakes import (
+from app.agents.fakes import (
     build_fake_feedback_review_graph,
     build_fake_question_check_graph,
 )
-from app.ai.graphs.feedback_review import build_feedback_review_graph
-from app.ai.graphs.question_check import build_question_check_graph
-from app.ai.llm import build_chat_model
+from app.agents.feedback.graph import build_feedback_review_graph
+from app.agents.llm import build_chat_model
+from app.agents.question.graph import build_question_check_graph
 from app.core.config import Settings
 
 

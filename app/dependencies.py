@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from app.ai.components import AiComponents
+from app.agents.components import AiComponents
 from app.repositories.answer_repository import AnswerRepository
 from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService

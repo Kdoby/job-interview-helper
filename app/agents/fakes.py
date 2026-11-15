@@ -4,7 +4,7 @@ import time
 # 보통 함수를 체인처럼 .invoke()/.ainvoke()로 부를 수 있게 감싸줌
 from langchain_core.runnables import RunnableLambda
 
-from app.ai.outputs.feedback import FeedbackResult
+from app.agents.feedback.outputs import FeedbackResult
 from app.core.config import Settings
 
 

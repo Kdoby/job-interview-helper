@@ -1,7 +1,7 @@
 import random
 
-from app.ai.callbacks import TokenUsageTracker
-from app.ai.errors import invoke_or_raise
+from app.agents.callbacks import TokenUsageTracker
+from app.agents.errors import invoke_or_raise
 from app.schemas.question import AiQuestionResponse
 from langchain_core.runnables import Runnable
 

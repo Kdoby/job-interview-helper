@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import anyio
 from fastapi import FastAPI
 
-from app.ai.components import build_ai_components, build_fake_ai_components
+from app.agents.components import build_ai_components, build_fake_ai_components
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handler
 from app.routers import answer_router, question_router

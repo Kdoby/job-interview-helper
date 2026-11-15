@@ -2,9 +2,8 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from app.ai.chains.feedback_chain import build_feedback_chain
-from app.ai.outputs.feedback import FeedbackResult, FeedbackReview
-from app.ai.prompts.feedback import REVIEW_PROMPT, REVISION_NOTE
+from app.agents.feedback.outputs import FeedbackResult, FeedbackReview
+from app.agents.feedback.prompts import FEEDBACK_PROMPT, REVIEW_PROMPT, REVISION_NOTE
 from app.core.thread_log import log
 
 
@@ -24,7 +23,7 @@ class FeedbackState(TypedDict):
 def build_feedback_review_graph(llm, max_reviews: int):
 
     # 체인 생성
-    draft_chain = build_feedback_chain(llm)
+    draft_chain = FEEDBACK_PROMPT | llm.with_structured_output(FeedbackResult)
     review_chain = REVIEW_PROMPT | llm.with_structured_output(FeedbackReview)
     print("[lifespan] review_chain 생성")
 
