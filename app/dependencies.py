@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.agents.components import AiComponents
+from app.domain.answer import Answer
 from app.repositories.answer_repository import AnswerRepository
 from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService
@@ -45,10 +46,18 @@ def get_feedback_service(
     repository: AnswerRepositoryDep,
     ai: AiDep,
 ) -> FeedbackService:
-    return FeedbackService(repository, ai.feedback_graph)
+    return FeedbackService(repository, ai.feedback_graph, ai.feedback_stream_graph)
 
 
 FeedbackServiceDep = Annotated[FeedbackService, Depends(get_feedback_service)]
+
+
+# 스트림은 응답 헤더(200)를 먼저 보내므로, 404 검사는 응답 전에 풀리는 의존성에서 해야함
+def get_existing_answer(answer_id: int, service: FeedbackServiceDep) -> Answer:
+    return service.find_answer(answer_id)
+
+
+ExistingAnswerDep = Annotated[Answer, Depends(get_existing_answer)]
 
 
 def get_question_service(

@@ -54,3 +54,18 @@ def invoke_or_raise(
     except (ValueError, ModelRefusalError) as e:
         raise AiRequestError("구조화된 응답을 받지 못했습니다.") from e
     return result
+
+
+async def astream_or_raise(
+    runnable: Runnable,
+    input: dict,
+    config: RunnableConfig | None = None,
+    stream_mode="values",
+):
+    try:
+        async for item in runnable.astream(input, config, stream_mode=stream_mode):
+            yield item
+    except openai.OpenAIError as e:
+        raise to_ai_request_error(e) from e
+    except (ValueError, ModelRefusalError) as e:
+        raise AiRequestError("구조화된 응답을 받지 못했습니다.") from e

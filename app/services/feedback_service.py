@@ -1,23 +1,31 @@
+from typing import AsyncIterator
+
 from langchain_core.runnables import Runnable
 
 from app.agents.callbacks import TokenUsageTracker
-from app.agents.errors import ainvoke_or_raise
-from app.agents.feedback.outputs import FeedbackResult
+from app.agents.errors import ainvoke_or_raise, astream_or_raise
+from app.agents.feedback.outputs import FeedbackAnalysis
 from app.agents.feedback.prompts import (
     HIGH_CONFIDENCE_GUIDE,
     LOW_CONFIDENCE_GUIDE,
     NORMAL_CONFIDENCE_GUIDE,
 )
-from app.core.exceptions import AnswerNotFoundError
+from app.core.exceptions import AiRequestError, AnswerNotFoundError
 from app.domain.answer import Answer
 from app.repositories.answer_repository import AnswerRepository
 from app.schemas.answer import AiFeedbackResponse
 
 
 class FeedbackService:
-    def __init__(self, repository: AnswerRepository, feedback_graph: Runnable):
+    def __init__(
+        self,
+        repository: AnswerRepository,
+        feedback_graph: Runnable,
+        feedback_stream_graph: Runnable,
+    ):
         self.repository = repository
         self.feedback_graph = feedback_graph
+        self.feedback_stream_graph = feedback_stream_graph
 
     # 1. 답변 조회
     def find_answer(self, answer_id: int) -> Answer:
@@ -27,6 +35,17 @@ class FeedbackService:
             raise AnswerNotFoundError(answer_id)
 
         return answer
+
+    def save_feedback(
+        self, answer: Answer, feedback: str, analysis: FeedbackAnalysis
+    ) -> AiFeedbackResponse:
+        answer.feedback = feedback
+        answer.score = analysis.score
+        self.repository.save(answer)
+
+        return AiFeedbackResponse.model_validate(
+            {"feedback": feedback, **analysis.model_dump(exclude={"level"})}
+        )
 
     # 자신감별 지시문 선택
     def select_confidence_guide(self, confidence: int) -> str:
@@ -56,13 +75,42 @@ class FeedbackService:
         )
         tracker.print_usage("feedback")
 
-        analysis = result["analysis"]
-        # 답변에 피드백, 점수 저장
-        answer.feedback = result["feedback"]
-        answer.score = analysis.score
-        self.repository.save(answer)
+        return self.save_feedback(answer, result["feedback"], result["analysis"])
 
-        # level 필드는 제외하고 타입 변환
-        return AiFeedbackResponse.model_validate(
-            {"feedback": result["feedback"], **analysis.model_dump(exclude={"level"})}
-        )
+    async def stream_feedback(self, answer: Answer) -> AsyncIterator[tuple[str, dict]]:
+        chain_input = self.build_chain_input(answer)
+        tracker = TokenUsageTracker()
+
+        feedback = ""
+        analysis = None
+
+        try:
+            async for mode, payload in astream_or_raise(
+                self.feedback_stream_graph,
+                chain_input,
+                {"callbacks": [tracker]},
+                # 이 두 종류의 소식을 받겠다
+                stream_mode=["messages", "updates"],
+            ):
+                # token 하나씩 스트리밍
+                if mode == "messages":
+                    chunk, metadata = payload
+                    if metadata.get("langgraph_node") == "generate" and chunk.text:
+                        yield "token", {"text": str(chunk.text)}
+
+                # 노드가 끝날 때 한 번씩: {"노드이름": 그 노드가 반환한 dict}
+                elif mode == "updates":
+                    if "generate" in payload:
+                        feedback = payload["generate"]["feedback"]
+                    if "analyze" in payload:
+                        analysis = payload["analyze"]["analysis"]
+
+            response = self.save_feedback(answer, feedback, analysis)
+            # 전체 구조화된 출력
+            yield "result", response.model_dump(by_alias=True)
+
+        except AiRequestError as e:
+            # 응답 코드는 이미 200이므로 error 이벤트로 알리고 끝냄
+            yield "error", {"code": "ERROR_CODE_00011", "detail": str(e)}
+        finally:
+            tracker.print_usage("feedback.stream")

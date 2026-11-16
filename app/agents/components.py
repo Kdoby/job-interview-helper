@@ -4,6 +4,7 @@ from langchain_core.runnables import Runnable
 
 from app.agents.fakes import (
     build_fake_feedback_review_graph,
+    build_fake_feedback_stream_graph,
     build_fake_question_check_graph,
 )
 from app.agents.feedback.graph import build_feedback_review_graph
@@ -16,6 +17,7 @@ from app.core.config import Settings
 class AiComponents:
     question_graph: Runnable  # 질문 API가 꺼내서 씀
     feedback_graph: Runnable  # 피드백 그래프
+    feedback_stream_graph: Runnable  # 피드백 스트림 그래프
 
 
 def build_ai_components(settings: Settings) -> AiComponents:
@@ -33,7 +35,15 @@ def build_ai_components(settings: Settings) -> AiComponents:
     feedback_graph = build_feedback_review_graph(llm, settings.feedback_max_reviews)
     print("[lifespan] feedback-review 그래프 생성")
 
-    return AiComponents(question_graph=question_graph, feedback_graph=feedback_graph)
+    # 피드백 스트림 그래프
+    feedback_stream_graph = build_feedback_review_graph(llm, 1)
+    print("[lifespan] feedback-stream 그래프 생성")
+
+    return AiComponents(
+        question_graph=question_graph,
+        feedback_graph=feedback_graph,
+        feedback_stream_graph=feedback_stream_graph,
+    )
 
 
 def build_fake_ai_components(settings: Settings) -> AiComponents:
@@ -42,5 +52,11 @@ def build_fake_ai_components(settings: Settings) -> AiComponents:
     print("[lifespan] 가짜 question-check 그래프 생성")
     feedback_graph = build_fake_feedback_review_graph(settings)
     print("[lifespan] 가짜 feedback-review 그래프 생성")
+    feedback_stream_graph = build_fake_feedback_stream_graph(settings)
+    print("[lifespan] 가짜 feedback-stream 그래프 생성")
 
-    return AiComponents(question_graph=question_graph, feedback_graph=feedback_graph)
+    return AiComponents(
+        question_graph=question_graph,
+        feedback_graph=feedback_graph,
+        feedback_stream_graph=feedback_stream_graph,
+    )
