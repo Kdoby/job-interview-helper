@@ -56,12 +56,13 @@ class FeedbackService:
         )
         tracker.print_usage("feedback")
 
-        # FeedbackResult
-        draft: FeedbackResult = result["draft"]
+        analysis = result["analysis"]
         # 답변에 피드백, 점수 저장
-        answer.feedback = draft.feedback
-        answer.score = draft.score
+        answer.feedback = result["feedback"]
+        answer.score = analysis.score
         self.repository.save(answer)
 
         # level 필드는 제외하고 타입 변환
-        return AiFeedbackResponse.model_validate(draft.model_dump(exclude={"level"}))
+        return AiFeedbackResponse.model_validate(
+            {"feedback": result["feedback"], **analysis.model_dump(exclude={"level"})}
+        )

@@ -1,9 +1,15 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
 
+from langchain_core.output_parsers import StrOutputParser
 from langgraph.graph import END, START, StateGraph
 
-from app.agents.feedback.outputs import FeedbackResult, FeedbackReview
-from app.agents.feedback.prompts import FEEDBACK_PROMPT, REVIEW_PROMPT, REVISION_NOTE
+from app.agents.feedback.outputs import FeedbackAnalysis, FeedbackReview
+from app.agents.feedback.prompts import (
+    ANALYZE_PROMPT,
+    REVIEW_PROMPT,
+    REVISION_NOTE,
+    WRITE_PROMPT,
+)
 from app.core.thread_log import log
 
 
@@ -13,32 +19,37 @@ class FeedbackState(TypedDict):
     answer: str
     confidence: int
     confidence_guide: str
-    draft: FeedbackResult
+    feedback: str
+    analysis: FeedbackAnalysis
     attempts: int
     passed: bool
     reason: str
+    retry: Literal["generate", "analyze"]
 
 
 # 그래프 조립
 def build_feedback_review_graph(llm, max_reviews: int):
 
     # 체인 생성
-    draft_chain = FEEDBACK_PROMPT | llm.with_structured_output(FeedbackResult)
+    write_chain = WRITE_PROMPT | llm | StrOutputParser()
+    analyze_chain = ANALYZE_PROMPT | llm.with_structured_output(FeedbackAnalysis)
     review_chain = REVIEW_PROMPT | llm.with_structured_output(FeedbackReview)
     print("[lifespan] review_chain 생성")
 
-    # 피드백 생성 노드
+    # 피드백 초안 작성 노드
     async def generate(state: FeedbackState):
 
-        # 시도 횟수 증가
-        attempts = state.get("attempts", 0) + 1
-        log("feedback.generate", f"attempts={attempts}")
+        log("feedback.generate", "feedback 작성 시작...")
 
         # 재작성이면 reason을 프롬프트에 넣음
         reason = state.get("reason", "")
-        revision_note = REVISION_NOTE.format(reason=reason) if reason else ""
+        revision_note = (
+            REVISION_NOTE.format(reason=reason)
+            if state.get("retry") == "generate"
+            else ""
+        )
 
-        draft = await draft_chain.ainvoke(
+        feedback = await write_chain.ainvoke(
             {
                 "question": state["question"],
                 "answer": state["answer"],
@@ -47,27 +58,57 @@ def build_feedback_review_graph(llm, max_reviews: int):
                 "revision_note": revision_note,
             }
         )
-        return {"draft": draft, "attempts": attempts}
+        return {"feedback": feedback}
+
+    # 피드백 채점 및 구조화 노드
+    async def analyze(state: FeedbackState):
+
+        # 시도 횟수 증가
+        attempts = state.get("attempts", 0) + 1
+        log("feedback.analyze", f"attempts={attempts}")
+
+        reason = state.get("reason", "")
+        revision_note = (
+            REVISION_NOTE.format(reason=reason)
+            if state.get("retry") == "analyze"
+            else ""
+        )
+
+        analysis: FeedbackAnalysis = await analyze_chain.ainvoke(
+            {
+                "question": state["question"],
+                "answer": state["answer"],
+                "confidence": state["confidence"],
+                "feedback": state["feedback"],
+                "revision_note": revision_note,
+            }
+        )
+        return {"analysis": analysis, "attempts": attempts}
 
     # 리뷰 노드
     async def review(state: FeedbackState):
-        draft = state["draft"]
+
+        analysis = state["analysis"]
 
         # 1. 코드 검사
-        if state["confidence"] >= 4 and len(draft.follow_up_questions) <= 0:
+        if state["confidence"] >= 4 and len(analysis.follow_up_questions) <= 0:
             reason = "자신감이 높은 지원자인데 꼬리 질문이 없다. follow_up_questions에 추가한다"
             log("feedback.review", f"코드 검사 실패: {reason}")
-            return {"passed": False, "reason": reason}
+            return {"passed": False, "reason": reason, "retry": "analyze"}
 
         # 기대 레벨
         expected = (
-            "우수" if draft.score >= 90 else "보통" if draft.score >= 70 else "부족"
+            "우수"
+            if analysis.score >= 90
+            else "보통"
+            if analysis.score >= 70
+            else "부족"
         )
 
-        if draft.level != expected:
+        if analysis.level != expected:
             reason = "점수와 통과 레벨이 모순된다. 점수 루브릭과 점수 구간을 반영하여 다시 점수 구간을 산정한다."
             log("feedback.review", f"코드 검사 실패: {reason}")
-            return {"passed": False, "reason": reason}
+            return {"passed": False, "reason": reason, "retry": "analyze"}
 
         # 2. LLM 검토
         result = await review_chain.ainvoke(
@@ -75,33 +116,37 @@ def build_feedback_review_graph(llm, max_reviews: int):
                 "question": state["question"],
                 "answer": state["answer"],
                 "confidence": state["confidence"],
-                "feedback": draft.feedback,
-                "score": draft.score,
+                "feedback": state["feedback"],
+                "score": analysis.score,
             }
         )
 
         # LLM 판정 결과
         log("feedback.review", f"passed={result.passed}, reason={result.reason}")
-        return {"passed": result.passed, "reason": result.reason}
+        return {"passed": result.passed, "reason": result.reason, "retry": "generate"}
 
     # 리뷰 라우터
     def route_after_review(state: FeedbackState):
         if state["passed"] or state["attempts"] >= max_reviews:
             return END
 
-        # 피드백 작성 노드로 돌아감
-        return "generate"
+        # generate or analyze 노드로 돌아감
+        return state["retry"]
 
     # 그래프 조립
     builder = StateGraph(FeedbackState)
 
     # 노드 등록
     builder.add_node("generate", generate)
+    builder.add_node("analyze", analyze)
     builder.add_node("review", review)
 
     # 엣지 등록
     builder.add_edge(START, "generate")
-    builder.add_edge("generate", "review")
-    builder.add_conditional_edges("review", route_after_review, ["generate", END])
+    builder.add_edge("generate", "analyze")
+    builder.add_edge("analyze", "review")
+    builder.add_conditional_edges(
+        "review", route_after_review, ["generate", "analyze", END]
+    )
 
     return builder.compile()

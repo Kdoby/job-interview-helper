@@ -9,6 +9,9 @@ class FeedbackResult(BaseModel):
         자신감에 따른 말투 지시를 따른다. 
         꼬리 질문은 여기에 쓰지 않고 follow_up_questions에만 담는다."""
     )
+
+
+class FeedbackAnalysis(BaseModel):
     score: int = Field(
         ge=0,
         le=100,

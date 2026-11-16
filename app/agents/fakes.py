@@ -4,7 +4,7 @@ import time
 # 보통 함수를 체인처럼 .invoke()/.ainvoke()로 부를 수 있게 감싸줌
 from langchain_core.runnables import RunnableLambda
 
-from app.agents.feedback.outputs import FeedbackResult
+from app.agents.feedback.outputs import FeedbackAnalysis
 from app.core.config import Settings
 
 
@@ -25,8 +25,8 @@ def build_fake_feedback_review_graph(settings: Settings):
     async def fake_feedback_review(input: dict) -> dict:
         await asyncio.sleep(settings.fake_llm_delay_seconds)
         return {
-            "draft": FeedbackResult(
-                feedback="(가짜 응답) 피드백과 리뷰입니다.",
+            "feedback": "(가짜 응답) 피드백입니다.",
+            "analysis": FeedbackAnalysis(
                 score=80,
                 strengths=["(가짜 응답) 잘한 부분 1"],
                 missing_concepts=["(가짜 응답) 놓친 개념 1"],
