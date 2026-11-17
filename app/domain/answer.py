@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -10,3 +10,4 @@ class Answer:
     confidence: int  # 답변에 대한 자신감
     feedback: str | None = None  # 답변에 대한 피드백
     score: int | None = None  # 답변 점수
+    missing_concepts: list[str] = field(default_factory=list)

@@ -46,8 +46,20 @@ class Settings(BaseSettings):
     # 1로 줄이면 def 핸들러가 한 번에 하나씩만 실행되는 것을 눈으로 확인할 수 있다(routers/ai_router.py의 실험 2).
     thread_pool_size: int | None = Field(default=None, ge=1)
 
+    # feedback
     feedback_max_reviews: int = Field(default=2, ge=1)
     question_max_regenerations: int = Field(default=2, ge=1)
+
+    # coaching
+    retry_max_attempts: int = Field(default=3, ge=1)
+    retry_target_score: int = Field(default=80, ge=1, le=100)  # 루프 종료 점수 조건
+
+    # interview
+    interview_max_depth: int = Field(default=2, ge=1)  # 꼬리 질문 최대 횟수
+    interview_max_turns: int = Field(default=6, ge=1)  # 인터뷰 최대 턴 수
+    interview_follow_up_score: int = Field(
+        default=70, ge=1, le=100
+    )  # 꼬리 질문 기준 점수
 
 
 @lru_cache

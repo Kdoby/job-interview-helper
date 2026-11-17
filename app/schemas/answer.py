@@ -39,3 +39,19 @@ class AiFeedbackResponse(CamelModel):
     strengths: list[str]
     missing_concepts: list[str]
     follow_up_questions: list[str]
+
+
+class AnswerRetryRequest(CamelModel):
+    answer: str = Field(min_length=1, max_length=300)
+
+
+class AnswerRetryResponse(CamelModel):
+    attempt: int
+    score: int
+    score_delta: int  # 직전 시도 대비
+    feedback: str  # 이번 답변 피드백 (grade)
+    missing_concepts: list[str]
+    improvements: list[str]
+    next_focus: str | None = None  # 끝났으면 None
+    finished: bool
+    summary: str | None = None  # 끝났을 때만

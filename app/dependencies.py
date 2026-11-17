@@ -3,11 +3,13 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from app.agents.components import AiComponents
+from app.core.config import get_settings
 from app.domain.answer import Answer
 from app.repositories.answer_repository import AnswerRepository
 from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService
 from app.services.question_service import QuestionService
+from app.services.coaching_service import CoachingService
 
 
 def get_ai(request: Request) -> AiComponents:
@@ -67,3 +69,16 @@ def get_question_service(
 
 
 QuestionServiceDep = Annotated[QuestionService, Depends(get_question_service)]
+
+
+def get_coaching_service(repository: AnswerRepositoryDep, ai: AiDep) -> CoachingService:
+    settings = get_settings()
+    return CoachingService(
+        repository,
+        ai.coaching_graph,
+        settings.retry_target_score,
+        settings.retry_max_attempts,
+    )
+
+
+CoachingServiceDep = Annotated[CoachingService, Depends(get_coaching_service)]

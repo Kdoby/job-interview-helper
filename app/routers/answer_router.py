@@ -4,8 +4,19 @@ from fastapi import APIRouter
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
 from app.core.thread_log import log
-from app.dependencies import AnswerServiceDep, ExistingAnswerDep, FeedbackServiceDep
-from app.schemas.answer import AiFeedbackResponse, AnswerCreateRequest, AnswerResponse
+from app.dependencies import (
+    AnswerServiceDep,
+    CoachingServiceDep,
+    ExistingAnswerDep,
+    FeedbackServiceDep,
+)
+from app.schemas.answer import (
+    AiFeedbackResponse,
+    AnswerCreateRequest,
+    AnswerResponse,
+    AnswerRetryRequest,
+    AnswerRetryResponse,
+)
 
 router = APIRouter(prefix="/api/answers", tags=["답변"])
 
@@ -53,3 +64,15 @@ async def stream_feedback(
     async for event, data in service.stream_feedback(answer):
         yield ServerSentEvent(event=event, data=data)
     log("stream", "스트림 종료")
+
+
+@router.post("/{answer_id}/retry", summary="답변 고쳐서 다시 내기 (코칭)")
+async def retry_answer(
+    answer_id: int, request: AnswerRetryRequest, service: CoachingServiceDep
+) -> AnswerRetryResponse:
+
+    log("retry", "요청 받음")
+    response = await service.retry(answer_id, request.answer)
+    log("retry", "요청 보냄")
+
+    return response

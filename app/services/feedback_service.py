@@ -41,6 +41,8 @@ class FeedbackService:
     ) -> AiFeedbackResponse:
         answer.feedback = feedback
         answer.score = analysis.score
+        answer.missing_concepts = analysis.missing_concepts
+
         self.repository.save(answer)
 
         return AiFeedbackResponse.model_validate(
