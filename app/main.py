@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from app.agents.components import build_ai_components, build_fake_ai_components
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handler
-from app.routers import answer_router, question_router
+from app.routers import answer_router, interview_router, question_router
 
 
 @asynccontextmanager
@@ -50,3 +50,4 @@ register_exception_handler(app)
 # 3. 라우터 등록
 app.include_router(answer_router.router)
 app.include_router(question_router.router)
+app.include_router(interview_router.router)

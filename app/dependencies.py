@@ -8,6 +8,7 @@ from app.domain.answer import Answer
 from app.repositories.answer_repository import AnswerRepository
 from app.services.answer_service import AnswerService
 from app.services.feedback_service import FeedbackService
+from app.services.interview_service import InterviewService
 from app.services.question_service import QuestionService
 from app.services.coaching_service import CoachingService
 
@@ -82,3 +83,10 @@ def get_coaching_service(repository: AnswerRepositoryDep, ai: AiDep) -> Coaching
 
 
 CoachingServiceDep = Annotated[CoachingService, Depends(get_coaching_service)]
+
+
+def get_interview_service(ai: AiDep) -> InterviewService:
+    return InterviewService(ai.interview_graph)
+
+
+InterviewServiceDep = Annotated[InterviewService, Depends(get_interview_service)]

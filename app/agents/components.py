@@ -9,15 +9,21 @@ from app.agents.fakes import (
     build_fake_coaching_graph,
     build_fake_feedback_review_graph,
     build_fake_feedback_stream_graph,
+    build_fake_interview_graph,
     build_fake_question_check_graph,
 )
 from app.agents.feedback.graph import build_feedback_review_graph
+from app.agents.interview.graph import build_interview_graph
 from app.agents.llm import build_chat_model
 from app.agents.question.graph import build_question_check_graph
 from app.core.config import Settings
 
 # state에 Pydantic 객체를 넣으면 여기에 추가
-CHECKPOINT_ALLOWED_TYPES = [("app.agents.coaching.outputs", "RetryGrade")]
+CHECKPOINT_ALLOWED_TYPES = [
+    ("app.agents.coaching.outputs", "RetryGrade"),
+    ("app.agents.interview.outputs", "TurnGrade"),
+    ("app.agents.interview.outputs", "InterviewReport"),
+]
 
 
 def build_checkpointer() -> InMemorySaver:
@@ -32,6 +38,7 @@ class AiComponents:
     feedback_graph: Runnable  # 피드백 그래프
     feedback_stream_graph: Runnable  # 피드백 스트림 그래프
     coaching_graph: Runnable  # 코칭 그래프
+    interview_graph: Runnable  # 인터뷰 그래프
 
 
 def build_ai_components(settings: Settings) -> AiComponents:
@@ -62,11 +69,21 @@ def build_ai_components(settings: Settings) -> AiComponents:
     )
     print("[lifespan] coaching 그래프 생성")
 
+    interview_graph = build_interview_graph(
+        llm,
+        settings.interview_max_depth,
+        settings.interview_max_turns,
+        settings.interview_follow_up_score,
+        checkpointer=checkpointer,
+    )
+    print("[lifespan] interview 그래프 생성")
+
     return AiComponents(
         question_graph=question_graph,
         feedback_graph=feedback_graph,
         feedback_stream_graph=feedback_stream_graph,
         coaching_graph=coaching_graph,
+        interview_graph=interview_graph,
     )
 
 
@@ -85,10 +102,13 @@ def build_fake_ai_components(settings: Settings) -> AiComponents:
         checkpointer=checkpointer,
     )
     print("[lifespan] 가짜 coaching 그래프 생성")
+    interview_graph = build_fake_interview_graph(settings, checkpointer=checkpointer)
+    print("[lifespan] 가짜 interview 그래프 생성")
 
     return AiComponents(
         question_graph=question_graph,
         feedback_graph=feedback_graph,
         feedback_stream_graph=feedback_stream_graph,
         coaching_graph=coaching_graph,
+        interview_graph=interview_graph,
     )
