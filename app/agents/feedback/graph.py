@@ -1,5 +1,3 @@
-from typing import Literal, TypedDict
-
 from langchain_core.output_parsers import StrOutputParser
 from langgraph.graph import END, START, StateGraph
 
@@ -10,21 +8,8 @@ from app.agents.feedback.prompts import (
     REVISION_NOTE,
     WRITE_PROMPT,
 )
+from app.agents.feedback.state import FeedbackState
 from app.core.thread_log import log
-
-
-# 상태 정의
-class FeedbackState(TypedDict):
-    question: str
-    answer: str
-    confidence: int
-    confidence_guide: str
-    feedback: str
-    analysis: FeedbackAnalysis
-    attempts: int
-    passed: bool
-    reason: str
-    retry: Literal["generate", "analyze"]
 
 
 # 그래프 조립

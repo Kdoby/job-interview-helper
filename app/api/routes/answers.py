@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 
 from app.core.thread_log import log
-from app.dependencies import (
+from app.api.dependencies import (
     AnswerServiceDep,
     CoachingServiceDep,
     ExistingAnswerDep,

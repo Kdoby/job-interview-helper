@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.dependencies import InterviewServiceDep
+from app.api.dependencies import InterviewServiceDep
 from app.schemas.interview import (
     InterviewAnswerRequest,
     InterviewCreateRequest,

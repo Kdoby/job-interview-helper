@@ -16,7 +16,7 @@ from app.agents.coaching.outputs import (
     CompareResult,
     RetryGrade,
 )
-from app.agents.feedback.graph import FeedbackState
+from app.agents.feedback.state import FeedbackState
 from app.agents.feedback.outputs import FeedbackAnalysis
 from app.agents.interview.graph import build_interview_graph
 from app.agents.interview.outputs import InterviewQuestion, InterviewReport, TurnGrade

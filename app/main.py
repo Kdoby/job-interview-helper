@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from app.agents.components import build_ai_components, build_fake_ai_components
 from app.core.config import get_settings
 from app.core.exceptions import register_exception_handler
-from app.routers import answer_router, interview_router, question_router
+from app.api.routes import answers, interviews, questions
 
 
 @asynccontextmanager
@@ -48,6 +48,6 @@ app = FastAPI(title="모의 면접 헬퍼 서버", version="1.0.0", lifespan=lif
 register_exception_handler(app)
 
 # 3. 라우터 등록
-app.include_router(answer_router.router)
-app.include_router(question_router.router)
-app.include_router(interview_router.router)
+app.include_router(answers.router)
+app.include_router(questions.router)
+app.include_router(interviews.router)

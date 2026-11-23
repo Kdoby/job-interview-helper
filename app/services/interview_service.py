@@ -3,8 +3,8 @@ from uuid import uuid4
 
 from langchain_core.runnables import Runnable
 
-from app.agents.callbacks import TokenUsageTracker
-from app.agents.errors import ainvoke_or_raise
+from app.shared.callbacks import TokenUsageTracker
+from app.shared.errors import ainvoke_or_raise
 from app.core.exceptions import InterviewFinishedError, InterviewNotFoundError
 from app.schemas.interview import (
     InterviewAnswerRequest,

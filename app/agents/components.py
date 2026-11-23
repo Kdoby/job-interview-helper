@@ -14,7 +14,7 @@ from app.agents.fakes import (
 )
 from app.agents.feedback.graph import build_feedback_review_graph
 from app.agents.interview.graph import build_interview_graph
-from app.agents.llm import build_chat_model
+from app.shared.models import build_chat_model
 from app.agents.question.graph import build_question_check_graph
 from app.core.config import Settings
 

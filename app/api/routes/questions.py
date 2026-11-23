@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.core.thread_log import log
-from app.dependencies import QuestionServiceDep
+from app.api.dependencies import QuestionServiceDep
 from app.schemas.question import AiQuestionResponse
 
 
