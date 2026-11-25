@@ -3,6 +3,7 @@ import re
 import time
 from collections.abc import Callable
 
+from langchain_core.documents import Document
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
@@ -20,8 +21,17 @@ from app.agents.feedback.state import FeedbackState
 from app.agents.feedback.outputs import FeedbackAnalysis
 from app.agents.interview.graph import build_interview_graph
 from app.agents.interview.outputs import InterviewQuestion, InterviewReport, TurnGrade
+from app.agents.rubric.graph import build_rubric_graph
+from app.agents.rubric.outputs import (
+    ConceptMatch,
+    GroundedCheck,
+    RelevanceGrade,
+    RewrittenQuery,
+    RubricFeedback,
+)
 from app.core.config import Settings
 from app.core.thread_log import log
+from app.shared.data import load_rubrics
 
 # ==================================================
 # feedback
@@ -134,7 +144,35 @@ def fake_turn_grade(prompt) -> TurnGrade:
 
 
 # ==================================================
-# 가짜 구조화 출력 모델 (coaching, interview 공용)
+# rubric
+# ==================================================
+
+# 가짜 리트리버가 항상 돌려주는 루브릭. ConceptMatch의 가짜 covered는 이 문서의 개념 이름이다
+FAKE_RUBRIC_SOURCE = "jpa_n_plus_1.md"
+
+
+# 프롬프트에서 마지막 <tag>...</tag> 안의 값만 꺼낸다
+# (시스템 프롬프트의 INJECTION_RULE에도 "<question>" 글자가 있어서 뒤에서부터 찾는다)
+def extract_last_tag(prompt, tag: str) -> str:
+    text = prompt.to_string()
+    start = text.rfind(f"<{tag}>")
+    if start == -1:
+        return ""
+    start += len(f"<{tag}>")
+    end = text.find(f"</{tag}>", start)
+    return text[start:end] if end != -1 else text[start:]
+
+
+# 가짜 관련성 판정: 질문에 "AOP"가 있으면 관련 없음(→ rewrite → 기존 피드백 그래프), 아니면 관련 있음
+def fake_relevance_grade(prompt) -> RelevanceGrade:
+    return RelevanceGrade(
+        reason="(가짜 응답) 판정 근거",
+        relevant="AOP" not in extract_last_tag(prompt, "question"),
+    )
+
+
+# ==================================================
+# 가짜 구조화 출력 모델 (coaching, interview, rubric 공용)
 # ==================================================
 
 # 스키마별 가짜 응답. 고정 객체 또는 프롬프트를 받아 객체를 만드는 함수
@@ -158,6 +196,16 @@ FAKE_STRUCTURED_OUTPUTS: dict[type[BaseModel], FakeOutput] = {
         weak_concepts=["(가짜 응답) 빠진 개념"],
         summary="(가짜 응답) 면접 총평입니다.",
     ),
+    # rubric: 개념 5개 중 2개를 다룬 것으로 둬서 score=40과 missing을 확인할 수 있게 한다
+    RelevanceGrade: fake_relevance_grade,
+    RewrittenQuery: RewrittenQuery(query="(가짜 응답) 재작성한 검색어"),
+    ConceptMatch: ConceptMatch(covered=["지연 로딩과 추가 쿼리", "fetch join"]),
+    RubricFeedback: RubricFeedback(
+        feedback="(가짜 응답) 루브릭 기반 피드백입니다.",
+        strengths=["(가짜 응답) 잘한 점 1"],
+        follow_up_questions=[],
+    ),
+    GroundedCheck: GroundedCheck(grounded=True, reason=""),
 }
 
 
@@ -205,4 +253,24 @@ def build_fake_interview_graph(settings: Settings, checkpointer):
         settings.interview_max_turns,
         settings.interview_follow_up_score,
         checkpointer,
+    )
+
+
+# 가짜 루브릭 그래프: 진짜 build_rubric_graph에 가짜 모델과 가짜 리트리버를 넣는다 (노드, 라우팅, 상한은 진짜)
+# 임베딩과 Chroma를 쓰지 않으므로 API 키와 색인이 없어도 동작한다
+def build_fake_rubric_graph(settings: Settings):
+    fixed = [
+        doc
+        for doc in load_rubrics(settings.rubric_docs)
+        if doc.metadata["source"] == FAKE_RUBRIC_SOURCE
+    ]
+
+    async def fake_retrieve(query: str) -> list[Document]:
+        return list(fixed)
+
+    return build_rubric_graph(
+        FakeStructuredChatModel(settings.fake_llm_delay_seconds),
+        RunnableLambda(fake_retrieve),
+        settings.rag_max_rewrites,
+        settings.rag_max_generations,
     )

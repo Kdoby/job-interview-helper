@@ -39,6 +39,8 @@ class AiFeedbackResponse(CamelModel):
     strengths: list[str]
     missing_concepts: list[str]
     follow_up_questions: list[str]
+    covered_concepts: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
 
 
 class AnswerRetryRequest(CamelModel):

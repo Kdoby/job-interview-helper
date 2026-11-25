@@ -11,12 +11,15 @@ from app.agents.fakes import (
     build_fake_feedback_stream_graph,
     build_fake_interview_graph,
     build_fake_question_check_graph,
+    build_fake_rubric_graph,
 )
 from app.agents.feedback.graph import build_feedback_review_graph
 from app.agents.interview.graph import build_interview_graph
-from app.shared.models import build_chat_model
+from app.agents.rubric.graph import build_rubric_graph
+from app.shared.models import build_chat_model, build_embeddings
 from app.agents.question.graph import build_question_check_graph
 from app.core.config import Settings
+from app.shared.retrieval import is_empty, open_vectorstore
 
 # state에 Pydantic 객체를 넣으면 여기에 추가
 CHECKPOINT_ALLOWED_TYPES = [
@@ -39,6 +42,7 @@ class AiComponents:
     feedback_stream_graph: Runnable  # 피드백 스트림 그래프
     coaching_graph: Runnable  # 코칭 그래프
     interview_graph: Runnable  # 인터뷰 그래프
+    rubric_graph: Runnable  # 루브릭 그래프(RAG)
 
 
 def build_ai_components(settings: Settings) -> AiComponents:
@@ -78,12 +82,27 @@ def build_ai_components(settings: Settings) -> AiComponents:
     )
     print("[lifespan] interview 그래프 생성")
 
+    store = open_vectorstore(settings, build_embeddings(settings))
+    if is_empty(store):
+        print(
+            "[lifespan] 경고: 루브릭 색인이 비어 있음. scripts.build_rubric_index를 먼저 실행하세요"
+        )
+
+    rubric_graph = build_rubric_graph(
+        llm,
+        store.as_retriever(search_kwargs={"k": settings.rag_top_k}),
+        settings.rag_max_rewrites,
+        settings.rag_max_generations,
+    )
+    print("[lifespan] rubric 그래프 생성")
+
     return AiComponents(
         question_graph=question_graph,
         feedback_graph=feedback_graph,
         feedback_stream_graph=feedback_stream_graph,
         coaching_graph=coaching_graph,
         interview_graph=interview_graph,
+        rubric_graph=rubric_graph,
     )
 
 
@@ -104,6 +123,8 @@ def build_fake_ai_components(settings: Settings) -> AiComponents:
     print("[lifespan] 가짜 coaching 그래프 생성")
     interview_graph = build_fake_interview_graph(settings, checkpointer=checkpointer)
     print("[lifespan] 가짜 interview 그래프 생성")
+    rubric_graph = build_fake_rubric_graph(settings)
+    print("[lifespan] 가짜 rubric 그래프 생성")
 
     return AiComponents(
         question_graph=question_graph,
@@ -111,4 +132,5 @@ def build_fake_ai_components(settings: Settings) -> AiComponents:
         feedback_stream_graph=feedback_stream_graph,
         coaching_graph=coaching_graph,
         interview_graph=interview_graph,
+        rubric_graph=rubric_graph,
     )
