@@ -1,0 +1,24 @@
+name: interview-helper
+
+services:
+  app:
+    image: ${DOCKERHUB_USER:?.env에 DOCKERHUB_USER를 적는다}/interview-helper:${IMAGE_TAG:-1.0.0}
+    env_file: .env
+    ports:
+      - "8888:8000"
+    volumes:
+      - chroma-data:/app/chroma_db
+    healthcheck:
+      # slim 이미지에는 curl이 없다. LLM을 부르지 않는 API로 확인한다
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/answers', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    restart: unless-stopped
+
+volumes:
+  chroma-data:
