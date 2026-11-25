@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from app.core.config import Settings
 
 
@@ -29,3 +29,18 @@ def build_chat_model(settings: Settings) -> ChatOpenAI:
     )
 
     return llm
+
+
+def build_embeddings(settings: Settings) -> OpenAIEmbeddings:
+    if settings.openai_api_key is None:
+        raise ValueError("OPENAI_API_KEY가 없어 OpenAI 클라이언트를 만들 수 없습니다.")
+
+    model = settings.embedding_model
+    api_key = settings.openai_api_key.get_secret_value()
+    timeout = settings.openai_timeout_seconds
+
+    embeddings = OpenAIEmbeddings(
+        model=model, api_key=api_key, timeout=timeout, max_retries=1
+    )
+
+    return embeddings
