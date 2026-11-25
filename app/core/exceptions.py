@@ -12,6 +12,31 @@ class AiRequestError(Exception):
     pass
 
 
+class FeedbackNotReadyError(Exception):
+    def __init__(self, answer_id: int):
+        super().__init__(
+            f"feedback을 받은 이후에 재답변을 시도할 수 있습니다. answer_id={answer_id}"
+        )
+        self.answer_id = answer_id
+
+
+class RetryLimitExceededError(Exception):
+    def __init__(self, answer_id: int):
+        super().__init__(
+            f"재답변이 이미 종료되었거나, 시도 상한에 도달했습니다. answer_id={answer_id}"
+        )
+
+
+class InterviewNotFoundError(Exception):
+    def __init__(self, interview_id: str):
+        super().__init__(f"해당 인터뷰를 찾을 수 없습니다. interview_id={interview_id}")
+
+
+class InterviewFinishedError(Exception):
+    def __init__(self, interview_id: str):
+        super().__init__(f"이미 종료된 인터뷰입니다. interview_id={interview_id}")
+
+
 def register_exception_handler(app: FastAPI) -> None:
 
     @app.exception_handler(AnswerNotFoundError)
@@ -35,6 +60,52 @@ def register_exception_handler(app: FastAPI) -> None:
             content={
                 "code": "ERROR_CODE_00011",
                 "description": "AI 응답 실패",
+                "detail": str(e),
+            },
+        )
+
+    @app.exception_handler(FeedbackNotReadyError)
+    def handle_feedback_not_ready(request: Request, e: AnswerNotFoundError):
+
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "ERROR_CODE_00002",
+                "description": "재답변 실패",
+                "detail": str(e),
+            },
+        )
+
+    @app.exception_handler(RetryLimitExceededError)
+    def handle_retry_limit_exceed(request: Request, e: AnswerNotFoundError):
+
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "ERROR_CODE_00003",
+                "description": "재답변 실패",
+                "detail": str(e),
+            },
+        )
+
+    @app.exception_handler(InterviewNotFoundError)
+    def handle_interview_not_found(request: Request, e: InterviewNotFoundError):
+        return JSONResponse(
+            status_code=404,
+            content={
+                "code": "ERROR_CODE_00004",
+                "description": "인터뷰 조회 실패",
+                "detail": str(e),
+            },
+        )
+
+    @app.exception_handler(InterviewFinishedError)
+    def handle_interview_finished(request: Request, e: InterviewFinishedError):
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "ERROR_CODE_00005",
+                "description": "인터뷰 답변 실패",
                 "detail": str(e),
             },
         )
