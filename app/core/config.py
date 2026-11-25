@@ -24,6 +24,13 @@ class Settings(BaseSettings):
 
     # 사용할 모델
     openai_model: str = "gpt-6-luna"
+    embedding_model: str = "text-embedding-3-large"
+
+    rubric_docs: Path = PROJECT_ROOT / "data" / "rubrics"
+    chroma_persist_dir: Path = PROJECT_ROOT / "chroma_db"
+    rag_top_k: int = Field(default=3, ge=1)
+    rag_max_rewrites: int = Field(default=2, ge=0)
+    rag_max_generations: int = Field(default=2, ge=1)
 
     # 추론 정도
     openai_reasoning_effort: Literal[
